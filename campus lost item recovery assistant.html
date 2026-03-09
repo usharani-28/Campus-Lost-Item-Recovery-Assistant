@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lost & Found Portal</title>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #4e73df, #1cc88a);
+            color: white;
+        }
+
+        header {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            text-align: center;
+            font-size: 24px;
+        }
+
+        nav {
+            display: none;
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            text-align: center;
+        }
+
+        nav button {
+            padding: 8px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            background: white;
+            color: #333;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        nav button:hover {
+            background: #ffd43b;
+        }
+
+        section {
+            display: none;
+            padding: 20px;
+        }
+
+        .active {
+            display: block;
+        }
+
+        .card {
+            background: white;
+            color: black;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+        }
+
+        input, select {
+            padding: 8px;
+            margin: 5px 0;
+            width: 100%;
+            border-radius: 5px;
+            border: none;
+        }
+
+        .btn {
+            padding: 8px 15px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background: #e63946;
+        }
+
+        #loginPage {
+            text-align: center;
+            margin-top: 100px;
+        }
+
+        #loginBox {
+            background: white;
+            color: black;
+            display: inline-block;
+            padding: 30px;
+            border-radius: 10px;
+        }
+
+        h2 {
+            color: yellow;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    🎓 KL University - Lost & Found Portal
+</header>
+
+<!-- LOGIN PAGE -->
+<div id="loginPage">
+    <div id="loginBox">
+        <h2>Login</h2>
+        <input type="text" id="username" placeholder="Enter Username">
+        <input type="password" id="password" placeholder="Enter Password">
+        <button class="btn" onclick="login()">Login</button>
+    </div>
+</div>
+
+<!-- NAVBAR -->
+<nav id="navbar">
+    <button onclick="showSection('home')">Home</button>
+    <button onclick="showSection('add')">Add Item</button>
+    <button onclick="showSection('view')">View Items</button>
+    <button onclick="showSection('search')">Search</button>
+    <button onclick="logout()">Logout</button>
+</nav>
+
+<!-- HOME -->
+<section id="home">
+    <h2 id="welcomeMessage"></h2>
+    <div class="card">
+        <h3>Dashboard</h3>
+        Lost Items: <span id="lostCount">0</span><br>
+        Found Items: <span id="foundCount">0</span><br>
+        Recovered Items: <span id="recoveredCount">0</span>
+    </div>
+</section>
+
+<!-- ADD ITEM -->
+<section id="add">
+    <h2>Add Lost/Found Item</h2>
+    <input type="text" id="itemName" placeholder="Item Name">
+    <input type="text" id="location" placeholder="Location">
+    <input type="text" id="roomNumber" placeholder="Room Number (Ex: A203)">
+    <input type="date" id="date">
+    <select id="status">
+        <option>Lost</option>
+        <option>Found</option>
+    </select>
+    <input type="text" id="contact" placeholder="Contact Number">
+    <button class="btn" onclick="addItem()">Submit</button>
+</section>
+
+<!-- VIEW ITEMS -->
+<section id="view">
+    <h2>All Items</h2>
+    <button class="btn" onclick="sortByDate()">Sort by Date</button>
+    <button class="btn" onclick="undoDelete()">Undo Delete</button>
+    <div id="itemList"></div>
+</section>
+
+<!-- SEARCH -->
+<section id="search">
+    <h2>Search Item</h2>
+    <input type="text" id="searchInput" placeholder="Enter Item Name">
+    <button class="btn" onclick="searchItem()">Search</button>
+    <div id="searchResult"></div>
+</section>
+
+<script>
+
+let items = JSON.parse(localStorage.getItem("items")) || [];
+let deletedStack = [];
+
+function saveData() {
+    localStorage.setItem("items", JSON.stringify(items));
+}
+
+function login() {
+    let user = document.getElementById("username").value;
+    let pass = document.getElementById("password").value;
+
+    if (user !== "" && pass === "1234") {
+        document.getElementById("loginPage").style.display = "none";
+        document.getElementById("navbar").style.display = "block";
+        document.getElementById("welcomeMessage").innerText =
+            "Welcome, " + user + "!";
+        showSection("home");
+        displayItems();
+        updateDashboard();
+    } else {
+        alert("Invalid Credentials!");
+    }
+}
+
+function logout() {
+    location.reload();
+}
+
+function showSection(id) {
+    document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+}
+
+function addItem() {
+
+    let nameValue = document.getElementById("itemName").value.trim();
+    let locationValue = document.getElementById("location").value.trim();
+    let roomValue = document.getElementById("roomNumber").value.trim();
+    let dateValue = document.getElementById("date").value;
+    let statusValue = document.getElementById("status").value;
+    let contactValue = document.getElementById("contact").value.trim();
+
+    // 🔐 Room Validation (only letters and numbers)
+    let roomPattern = /^[A-Za-z0-9]+$/;
+    if (!roomPattern.test(roomValue)) {
+        alert("Room number must contain only letters and numbers (Example: A203)");
+        return;
+    }
+
+    let item = {
+        name: nameValue,
+        location: locationValue,
+        room: roomValue,
+        date: dateValue,
+        status: statusValue,
+        contact: contactValue
+    };
+
+    items.push(item);
+    saveData();
+    alert("Item Added Successfully!");
+    displayItems();
+    updateDashboard();
+}
+
+function displayItems() {
+    document.getElementById("itemList").innerHTML = "";
+    items.forEach((item, index) => {
+        document.getElementById("itemList").innerHTML += `
+            <div class="card">
+                <strong>${item.name}</strong> (${item.status})<br>
+                Location: ${item.location}<br>
+                Room No: ${item.room}<br>
+                Date: ${item.date}<br>
+                Contact: ${item.contact}<br>
+                <button onclick="deleteItem(${index})">Delete</button>
+            </div>
+        `;
+    });
+}
+
+function deleteItem(index) {
+    deletedStack.push(items[index]);
+    items.splice(index, 1);
+    saveData();
+    displayItems();
+    updateDashboard();
+}
+
+function undoDelete() {
+    if (deletedStack.length > 0) {
+        items.push(deletedStack.pop());
+        saveData();
+        displayItems();
+        updateDashboard();
+    }
+}
+
+function searchItem() {
+    let query = document.getElementById("searchInput").value.toLowerCase();
+    let result = items.filter(item =>
+        item.name.toLowerCase().includes(query)
+    );
+
+    document.getElementById("searchResult").innerHTML = "";
+    result.forEach(item => {
+        document.getElementById("searchResult").innerHTML += `
+            <div class="card">
+                <strong>${item.name}</strong> (${item.status})
+            </div>
+        `;
+    });
+}
+
+function sortByDate() {
+    items.sort((a, b) => new Date(a.date) - new Date(b.date));
+    saveData();
+    displayItems();
+}
+
+function updateDashboard() {
+    let lost = 0, found = 0, recovered = 0;
+
+    items.forEach(item => {
+        if (item.status === "Lost") lost++;
+        else if (item.status === "Found") found++;
+        else if (item.status === "Recovered") recovered++;
+    });
+
+    document.getElementById("lostCount").innerText = lost;
+    document.getElementById("foundCount").innerText = found;
+    document.getElementById("recoveredCount").innerText = recovered;
+}
+
+</script>
+
+</body>
+</html>
